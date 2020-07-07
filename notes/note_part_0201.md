@@ -143,7 +143,155 @@
 
 ```js
     // 自定义 Generator
-    // 
+```
+
+```js
+    // 创建 Generator 模块
+    // Generator 本质上就是一个 NPM 模块
+    // Generator 基本结构:
+    // |- Generators/ ...............生成器目录
+    // |    |- app/ .................默认生成器目录
+    // |        |- index.js .........默认生成器实现
+    // |    |- compoment/ ...........其他子生成器目录
+    // |        |- index.js .........其他子生成器目录实现
+    // |-package.json ...............模块包配置文件
+
+    // 模块名称必须是 generator-<name> 模式
+```
+
+```js
+    // 1. 生成一个 generator-sample 文件夹 mkdir generator-sample
+    // 2. yarn init
+    // 3. 安装 yeoman-generator 模块, 这个模块提供了生成器的基类, 提供了一些工具函数, 可以使得模块开发更加便捷 yarn add yeoman-generator
+    // 4. 在 generator-sample 文件夹中 创建一个 generators 文件夹
+    // 5. generators 文件夹下 创建一个 app 文件夹
+    // 6, app 文件夹下创建一个 index.js 作为生成器默认实现
+    // 7. index.js 作为 Generator 的 核心入口,
+    // 8. 需要导出一个继承自 Yeoman Generator 的类型
+    // 9. Yeoman Generator 在工作室会自动调用我们在此类型中定义的一些生命周期方法
+    // 10. 我们在这些方法中可以通过调用父类的一些工具方法实现一些功能, 例如文件的写入
+    const Generator = require('yeoman-generator')
+    module.exports = class extends Generator {
+        // 重写 Yeoman 方法, writing 会在生成文件阶段 自动调用
+        writing() {
+            // Yeoman 自动在生成文件阶段调用此方法
+            // 我们这里尝试往项目目录中写入文件
+            // 调用父类的 fs 模块(与 node fs 模块不同, 是一个高度封装的 file system 模块)
+            this.fs.write(
+                this.destinationPath('temp.txt'), // 自动获取生成项目目录下的文件路径
+                Math.random().toString()
+            )
+        }
+    }
+    // 11. 通过 yarn link 方式把模块连接到全局范围, 使之成为全局模块包, yeoman 在工作时就可以找到该 generator 
+    // 12. 通过 yo sample 方式 调用 generator
+```
+
+```js
+    // 根据模板创建文件
+    // 1. 在生成器目录下生成一个 templates 目录
+    // 2. 在 templates 目录中放置模板文件
+    // 3. 模板文件 内部可以使用 EJS 模板标记输出数据,例如: <%= title %> , 其他的 EJS 语法也支持, <% if (success) {%> 哈哈哈 <% } %> 
+    // 4. 在writing 方法中可以使用 copyTpl 方法 复制模板文件
+    const Generator = require('yeoman-generator')
+    module.exports = class extends Generator {
+        // 重写 Yeoman 方法, writing 会在生成文件阶段 自动调用
+        writing() {
+            // 通过模板方式写入文件到目标目录
+            // 模板路径
+            const templ = this.templatePath('foo.txt')
+            // 输出目标路径
+            const output = this.destinationPath('foo.txt');
+            // 模板数据上下文
+            const context = {title: 'hello motto', success: true};
+            // copy 模板
+            this.fs.copyTpl(templ, output, context);
+        }
+    }
+    // 5. yarn link
+    // 6. yo sample
+
+    // 相对于手动创建每一个文件, 模板方式大大提高了效率, 特别是在文件比较多比较复杂的情况下
+```
+
+```js
+    // 接受用户输入数据
+    // 可以实现 generator 中的 prompting 方法 发起命令行交互 实现用户输入
+    // prompting () 方法 Yeoman 在询问用户环节会自动调用此方法
+    // 在此方法中可以调用父类的 prompt() 方法发出对用户的命令行 询问
+    // 这个方法返回的是一个promise,
+    // 在 prompt() 方法中接受一个数组参数, 每个元素都是一个问题对象
+    // 问题对象包含四个属性 type (问题类型) name (问题名称) message (问题说明) default (默认值)
+    // 在返回的promise 方法的 then 方法中 返回一个 answers 对象, 是对以上问题的回答, 可以挂载到 this 对象上, 以便在 writing 方法中调用
+    const Generator = require('yeoman-generator')
+    module.exports = class extends Generator {
+        prompting() {
+            return this.prompt([
+                {
+                    type: 'input', // 类型
+                    name: 'name', // 名称
+                    message: "your project name",
+                    default: this.appname // appname 为项目生成目录名称
+                },
+                {
+                    type: 'input', 
+                    name: 'version', 
+                    message: 'your project version',
+                    default: '0.1.0'
+                },
+                {
+                    type: "confirm",
+                    name: 'printVersion',
+                    message: 'need print version',
+                    default: false
+                }
+            ]).then (answers => {
+                // 当前问题接受完用户输入的结果
+                // answers -> { name : user input name}
+                // 挂载到 this 对象上, 以便于在 writing 中使用
+                this.answers = answers
+            })
+        }
+        // 重写 Yeoman 方法, writing 会在生成文件阶段 自动调用
+        writing() {
+            // 通过模板方式写入文件到目标目录
+            // 模板路径
+            const templ = this.templatePath('foo.txt')
+            // 输出目标路径
+            const output = this.destinationPath('foo.txt');
+            // 模板数据上下文
+            const context = this.answers;
+            // copy 模板
+            this.fs.copyTpl(templ, output, context);
+        }
+    }
+```
+
+```js
+    // Vue Generator 案例
+    // 1. 正常创建 generator 的目录结构和文件
+    // 2. 将常用的文件及结构导入 templates 目录下
+    // 3. 修改 模板文件中的 需要替换的内容 为 模板标记
+    // 4. 在 writing() 中 将所有文件的相对路径组成 数组
+    // 5. 循环遍历 templates 路径数组 copyTpl() 生成文件
+```
+
+```js
+    // 发布 Generator 
+    // 发布 npm 模块
+    // npm publish 命令
+    // yarn publish 命令
+
+    // 1. echo 忽略不需要发布的文件
+    // echo node_modules > .gitignore
+    // 2. git init 初始化本地空仓库
+    // 3. git status 查看本地仓库状态
+    // 4. git add 添加文件
+    // 5. git commit -m "somethings"  创建提交
+    // 6. 创建一个远端仓库
+    // 7. 同步至远端仓库
+    // 8. 为远端仓库添加别名 git remote add origin https://...
+    // 9. push 至远端仓库 git push -u origin master
 ```
 
 ## 2.自动化构建系统
