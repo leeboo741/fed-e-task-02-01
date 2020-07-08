@@ -345,10 +345,73 @@
     // yarn plop component(生成器名称)
 ```
 
+```js
+    // Plop 使用总结
+    // 1. 将 plop 模块作为项目开发依赖安装
+    // 2. 在项目根目录下创建一个 plopfile.js 文件
+    // 3. 在 plopfile.js 文件中定义脚手架任务
+    // 4. 编写用于生成特定类型文件的模板
+    // 5. 通过 Plop 提供的 CLI 运行脚手架任务
+```
+
+```js
+    // 脚手架的工作原理
+    // 脚手架 本质上就是一个 cli 应用
+    // 1. yarn init 创建一个带 package.json 的项目文件夹 => yarn init
+    // 2. 创建一个 cli.js 文件 
+    // 3. 在 package.json 文件中 指定 bin 为 cli.js => bin: 'cli.js'
+    // 4. cli.js 必须指定文件头 => #!/usr/bin/env node
+    // 5. 如果是 linux 和 macOS 系统还需要修改 cli.js 文件读写权限为 755 => chmod 755 cli.js
+    // 6. 创建一个 templates 文件夹安放 模板文件
+    // 7. 脚手架工作流程: {
+        // 1. 通过命令行交互询问用户问题
+        // 2. 根据用户回答的结果生成文件 需要用到 inquirer 模块, yarn add inquirer
+        // 3. 根据用户反馈结果生成文件
+    // }
+    const inquirer = require('inquirer');
+    const fs = require('fs');
+    const path = require('path'); // 当前目录
+    const ejs = require('ejs')
+
+    inquirer.prompt([
+        {
+            type: 'input',
+            name: 'name',
+            message: 'Project name?'
+        }
+    ]).then(answers => {
+        console.log(answers);
+        // 根据问题答案生成文件
+        // 模板目录 当前路径 +  当前文件夹名称 + templates  == templates 文件夹所在路径
+        const tmplDir = path.join(__dirname, 'templates');
+        // 目标目录
+        const destDir = process.cwd(); // 当前命令行在哪个文件夹内就是哪个文件的目录
+        // 将模板下的文件全部转换到目标目录
+        fs.readdir(tmplDir, (err, files) => {
+            if (err) throw err;
+            files.forEach(file => {
+                console.log(file);
+                // file 是相对于templates的相对路径
+                // 通过模板引擎渲染路径所对应的文件
+                // 安装 ejs 模板引擎 yarn add ejs
+                ejs.renderFile(path.join(tmplDir, file), answers, (err, result) => {
+                    if (err) throw err;
+                    console.log(result);
+                    // 将渲染结果 写入 目标文件路径下的文件
+                    fs.writeFileSync(path.join(destDir, file), result);
+                })
+            })
+        })
+    })
+```
 ## 2.自动化构建系统
 
 ```js
-
+    // 一切重复工作本应自动化
+    // 开发阶段的源代码 => 自动化构建 => 生产代码 (自动化构建工作流)
+    // 作用: 尽可能脱离运行环境兼容带来的问题, 去在开发阶段使用提高效率的语法,规范和标准
+    // 典型运用场景: 开发网页应用时, 使用 ECMAScript 最新标准去提高编码效率和质量, Sass 增强CSS的可编程性, 模板引擎 去抽象 页面中重复的 html, 这些用法大多都不被浏览器直接支持.
+    // 自动化构建工具, 将这些不被支持的特性, 转换成能够直接运行的代码
 ```
 
 ## 3.模块化打包
