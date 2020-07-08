@@ -292,6 +292,57 @@
     // 7. 同步至远端仓库
     // 8. 为远端仓库添加别名 git remote add origin https://...
     // 9. push 至远端仓库 git push -u origin master
+    // 10. yarn publish 发布 至 npm 仓库
+    // 11. 注册npm 用户名和密码
+    // 12. 如果使用了 淘宝的 npm 镜像, 因为淘宝镜像属于只读镜像, 会导致发布错误
+    // 13. 修改本地镜像配置, 或者publish 追加 registry 配置
+    // 14. yarn publish --registry=https://registry.yarnpkg.com
+    // 15. 发布成功后 可以去 npm 官网查看, 其后可以通过 npm 和 yarn 安装执行
+```
+
+```js
+    // Plop 一款小而美的脚手架工具
+    // 主要用于创建项目中特定类型文件的小工具
+    // 类似于 sub-generator
+    // 一般不会独立使用, 一般集成到项目中, 用来自动化的创建同类型的项目文件
+```
+
+```js
+    // Plop 的具体使用
+
+    // 1. 文件目录下 安装 plop 模块 yarn add plop --dev 
+    // 2. 根目录下创建一个 plopfile.js 文件 作为plop 入口文件
+    // 3. plopfile.js 中需要导出一个函数, 此函数接收一个 plop 对象, 对象中包含一系列的工具函数, 用于创建生成器任务
+    module.exports = plop => {
+        plop.setGenerator('component', // 生成器名称
+        {
+            description: 'create a component', // 生成器描述
+            prompts: [
+                {
+                    type: 'input',
+                    name: 'name',
+                    message: 'component name',
+                    default: 'MyComponent'
+                }
+            ], // 命令行问题
+            actions: [
+                {
+                    type: 'add', // 类型 add 添加全新文件
+                    path: 'src/components/{{name}}/{{name}}.js', // 指定目标路径
+                    templateFile: '', // 执行模板路径
+                }
+            ], // 生成器完成命令行输入之后要执行的动作
+        })
+    }
+    // 4. 在根目录下 创建一个 plop-templates 文件夹盛放模板文件,
+    // 5. 可以通过 .hbs 模板引擎的方式去创建模板文件, 允许使用插值的方式生成
+    import react from 'react';
+    export default () => () {
+        <div className-"{{name}}">
+            <h1>{{name}} components</h1>
+        </div>
+    }
+    // yarn plop component(生成器名称)
 ```
 
 ## 2.自动化构建系统
