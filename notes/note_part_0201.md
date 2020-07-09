@@ -420,6 +420,146 @@
 
 ```
 
+### (1). Grunt
+
+```js
+    // 基本使用
+    // 1. yarn init
+    // 2. yarn add grunt
+    // 3. 创建一个 gruntfile.js 文件 -> grunt 入口文件, 用于定义一些需要 grunt 自动执行的任务, 需要导出一个函数, 函数接受一个 grunt 的形参, 内部提供一些创建任务时可以用到的 API
+    module.exports = grunt => {
+        // 注册任务 (任务名称, (可选, 如果第二参数是字符串, 会成为任务描述, yarn grunt -help可查看) , 任务函数)
+        grunt.registerTask("foo", () => {
+            console.log('hello grunt');
+        })
+        grunt.registerTask('bar', 'bar 任务描述', () => {
+            console.log('hello, bar task')
+        })
+        // 任务名称为 default , 会成为默认任务, yarn grunt 就会自动调用 default 任务
+        // 一般用default 映射一些其他任务
+        // 第二个参数传入 其他任务名称数组, 将会自动执行任务组
+        grunt.registerTask('default', ['foo','bar']);
+        // grunt 异步任务
+        // console.log 没有执行
+        // grunt 默认支持同步模式, 如果要异步操作, 要用this 的 async 方法 得到一个回调函数, 在异步操作执行完成过后, 调用该函数, 标识任务完成
+        grunt.registerTask('async-task', ()=> {
+            setTimeout(() => {
+                console.log('async task working');
+            }, 1000);
+        })
+        grunt.registerTask('async-task-2', function() {
+            const done = this.async();
+            setTimeout(() => {
+                console.log('async task working')
+                done()
+            }, 1000);
+        })
+    }
+    // 4. yarn grunt foo
+```
+
+```js
+    // grunt 标记任务失败
+    // 1. 可以通过return false来标记是失败
+    // 2. 如果任务是在一个列表中, 会导致后续任务不再执行
+    grunt.registerTask('bad-working', () => {
+        console.log('bad working');
+        return false;
+    })
+    grunt.registerTask('default',['foo', 'bad-working', 'bar'])
+    // 可以在 yarn grunt default 语句后添加 --force 
+    // yarn grunt default --force 会强制执行所有任务, 忽略有错误任务的情况
+
+    // 异步任务
+    // 在异步回调函数指定一个 false 实参, 就可以标记失败
+    grunt.registerTask('bad-async-task', function() {
+        const done = this.async();
+        setTimeout(() => {
+            console.log('bad-async-task working')
+            done(false)
+        }, 1000);
+    })
+```
+
+```js
+    // grunt 配置选项方法, 接受一个对象形式的参数, 对象的键, 一般和任务名称保持一致, 值可以是任意类型属性
+    grunt.initConfig({
+        testInitConfig: 'test-initConfig',
+        testinitconfig2: {
+            bar: 123
+        }
+    })
+    // 通过 grunt.config 可以获取对应的配置
+    grunt.registerTask("testInitConfig",() => {
+        console.log(grunt.config('testInitConfig'));
+    })
+    // 如果config 对象的 值 是一个对象, config 方法支持高级用法
+    grunt.registerTask("testinitconfig2", () => {
+        console.log(grunt.config('testinitconfig2.bar'))
+        var configObj = grunt.config('testinitconfig2');
+        console.log(configObj.bar);
+    })
+```
+
+```js
+    // grunt 多目标任务
+    // 子任务的概念
+    // 多目标任务模式, 可以让任务根据配置形成多个子任务
+    // 多目标任务需要配置目标, initConfig() 方法
+    // config 对象中指定一个 和 任务名称同名的属性
+    // build 对应一个对象
+    // 对象中每个属性名字 就是 目标任务名称, options 除外, options 指定的信息 会作为任务的配置选项出现
+    // 如果要运行指定目标 yarn grunt build:css
+    // 在任务函数中 可以通过 this 拿到当前执行的目标的名称 和 配置数据
+    grunt.initConfig({
+        build: {
+            options: {
+                foo: 'bar',
+                bar: 'testBar'
+            },
+            css: '1',
+            js: '2',
+            test: { // 目标中也可以加配置选项, 会覆盖掉对象中的 options
+                options: {
+                    foo: 'baz'
+                }
+            }
+        }
+    })
+    grunt.registerMultiTask('build', function(){
+        console.log('build task')
+        console.log(`target: ${this.target} , data: ${this.data}`);
+        // 拿到配置选项对象
+        console.log(this.options());
+    })
+```
+
+```js
+    // grunt 插件的使用
+    // 插件
+    // 1. 先安装 eg. yarn add grunt-contrib-clean
+    // 2. 再引入 eg. grunt.loadNpmTask('grunt-contrib-clean');
+    grunt.loadNpmTasks('grunt-contrib-clean')
+    // 一般 grunt 插件命名 grunt-contrib-XXX
+    // 3. initConfig 中 添加 对应目标的配置选项
+    // 4. 执行 yarn grunt clean:tempAppjs 删除 temp文件目录下 app.js文件
+    grunt.initConfig({
+        clean:{
+            tempAppjs: 'temp/app.js', // app.js
+            tempTxt: 'temp/*.txt', // 所有.txt 文件
+            tempAll: "temp/**" // 所有子目录以及子目录下的文件
+        }
+    })
+```
+
+```js
+    // grunt 常用插件及总结
+```
+
+### (2). Glup
+
+### (3). FIS
+
 ## 4.项目代码规范化
 
 ```js
