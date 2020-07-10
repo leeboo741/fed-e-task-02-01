@@ -414,6 +414,78 @@
     // 自动化构建工具, 将这些不被支持的特性, 转换成能够直接运行的代码
 ```
 
+```js
+    // NPM Script
+    // 定义一些与项目开发过程有关的脚本命令, 跟随项目一起维护, 方便后续使用
+    // package.json -> scripts -> 'build' : 'sass scss/main.scss css/style.css'
+    // yarn build
+    // 是实现自动化构建工作流的最简方式
+```
+
+```js
+    // 自动化构建示例
+    // yarn add browser -sync --dev
+    // package.json -> scripts -> 'server' : 'browser -sync .'
+    // yarn server
+
+    // 使用 NPM Script 钩子机制, 定义一个 preServe
+
+    // scripts : {
+    //     'build' : 'sass scss/main.scss css/style.css',
+    //     'preserve': 'yarn build',
+    //     'serve': 'browser -sync .'
+    // }
+```
+
+```js
+    // 添加一个 --watch 参数, 监听文件变化
+    // 但是会阻塞执行后面的任务
+    // yarn add npm-run-all 允许文件同时执行
+    
+    // scripts : {
+    //     'build' : 'sass scss/main.scss css/style.css --watch',
+    //     'serve': 'browser -sync .  --files \"css/*.css\"'
+    //     'start': 'run-p build serve'
+    // }
+
+    // yarn start -> 同时执行build 和 start, 并监听 watch 变化
+
+    // --files \"css/*.css\" 监听 css/*.css 文件的变化
+```
+
+```js
+    // NPM Scripts 解决一部分简单的自动化构建任务, 复杂任务比较吃力
+
+    // 常用的自动化构建工具
+    // Grunt | Gulp | FIS
+
+    // Grunt 功能完善, 复杂, 但是构建过程基于临时文件来完成, 使用临时构建速度偏慢,
+    // 对于大型项目来说, 构建太慢
+    // Gulp 基于内存实现, 速度快, 默认支持同时执行多个任务, 使用方式更加易懂, 目前最流行的构建系统
+    // FIS 微内核 更像一种捆绑套餐, 把项目中典型需求集成到内部, 大而全
+
+    // 初学者 FIS 
+    // 要求灵活多变 Grunt Gulp
+```
+
+### (1). Grunt
+
+```js
+    // Grunt 的基本使用
+    // 1. yarn init
+    // 2. yarn add grunt
+    // 3. 根目录创建一个 gruntfile.js 的文件作为 grunt 的入口文件, 用于定义一些需要grunt 自动执行的任务
+    // 4. 需要导出一个函数
+    // 5. 此函数接收一个 grunt 的形参, 内部提供一些创建任务时可以用到的 API
+```
+
+
+### (2). Gulp
+
+
+### (3). FIS
+
+
 ## 3.模块化打包
 
 ```js
