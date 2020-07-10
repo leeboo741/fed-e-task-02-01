@@ -471,6 +471,10 @@
 ### (1). Grunt
 
 ```js
+    // Grunt 基本退出舞台, 目的: 能看懂Grunt 就行, 基本不会使用了
+```
+
+```js
     // Grunt 的基本使用
     // 1. yarn init
     // 2. yarn add grunt
@@ -604,9 +608,95 @@
 
 ```js
     // grunt 常用插件及总结
+
+    // 1. grunt-sass
+    //  (1)yarn add grunt-sass sass --dev 安装
+    //  (2)loadNpmTasks('grunt-sass') 导入
+    //  (3)配置输入和输出路径
+    //  (4)配置implmentation
+    //  (5)配置是否生成sourceMap
+    const sass = require('sass')
+    const loadGruntTasks = require('load-grunt-tasks');
+    module.exports = grunt => {
+        grunt.initConfig({
+            sass: {
+                options: {
+                    sourceMap: true,
+                    implementation: sass
+                },
+                main: {
+                    files: {
+                        'dist/css/main.css': 'src/scss/main.scss' // 目标路径: 输入路径
+                    } // 指定输入输出路径
+                } // 目标
+            } // 配置目标
+        })   
+        // grunt.loadNpmTasks('grunt-sass'); // 载入 grunt-sass 任务 (多任务)
+        loadGruntTasks(grunt) // 会自动加载所有的 grunt 插件
+    }
+    // 通过grunt-sass 官方文档查看更多选项
+
+    // 2. 如果引入很多模块, loadNpmTasks() 使用很多, 可以使用 load-grunt-tasks 模块来简化步骤
+    // (1)yarn add load-grunt-tasks --dev
+    // (2)loadGruntTasks(grunt); // 加载所有 grunt 插件中的任务
+
+    // 3. grunt-babel 编译ES6语法 ES6语法常用编译器 babel
+    // babel 负责转换 ES 的最新特性, 最新特性 打包成了 preset
+    // 导入 preset-env 会默认按 最新特性进行 js 转换 ES6 => ES5
+    // (1)yarn add grunt-babel @babel/core @babel/preset-env --dev // 需要同步安装 babel 核心语法 和 babel 预设
+
+    const sass = require('sass')
+    const loadGruntTasks = require('load-grunt-tasks')
+    module.exports = grunt => {
+        grunt.initConfig({
+            sass: {
+                options: {
+                    sourceMap: true,
+                    implementation: sass
+                },
+                main: {
+                    files: {
+                        'dist/css/main.css': 'src/scss/main.scss' // 目标路径: 输入路径
+                    } // 指定输入输出路径
+                }// 目标
+            
+            }, // 配置目标
+            babel: {
+                options: {
+                    presets: ["@babel/preset-env"],
+                    sourceMap: true,
+                },
+                main: {
+                    files: {
+                        "dist/js/app.js" : "src/js/app.js"
+                    }
+                }
+            }
+        })   
+        // grunt.loadNpmTasks('grunt-sass'); // 载入 grunt-sass 任务 (多任务)
+        
+        loadGruntTasks(grunt); // 会自动加载所有的 grunt 插件中的任务
+    } 
+
+    // 4. 当文件修改完成后 自动编译 grunt-contrib-watch --dev
+    // (1) yarn add grunt-contrib-watch --dev
+    // (2) 配置文件
+    // (3) yarn grunt watch
+
+    // 5. 一般而言会先给 watch 做个映射
+    // grunt.registerTask('default', ['sass','babel', 'watch'])
 ```
 
 ### (2). Glup
+
+```js
+    // 当前主流自动构建工具  重点
+```
+
+```js
+    // gulp 基本使用
+    // 高效, 易用
+```
 
 ### (3). FIS
 
