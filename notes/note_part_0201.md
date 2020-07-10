@@ -696,6 +696,124 @@
 ```js
     // gulp 基本使用
     // 高效, 易用
+    
+    // 1. yarn init
+    // 2. yarn add gulp 
+    // 安装同时会安装一个 gulp-cli , 可以后续根据 使用 gulp 命令 运行构建任务
+    // 3. 创建一个 gulpfile.js 文件作为 gulp 入口
+    // gulp 入口文件
+    // 这个文件运行在 nodejs 中
+    // 所以可以使用 commonjs 规范
+    // 定义构建任务方式 -> 通过导出函数成员的方式定义
+
+    // 最新 gulp 取消了同步代码模式, 约定所有任务都是异步任务  所以需要 手动调用回调函数 done() 来标识任务完成
+
+    // yarn gulp foo
+    exports.foo = done => {
+        console.log('foo task working')
+        done()
+    }
+
+    // 默认任务 yarn gulp
+    exports.default = done => {
+        console.log('default task working')
+        done()
+    }
+
+    // gulp 4.0 以前, 需要通过 gulp 模块里的方法去实现 注册任务
+    const gulp = require("gulp");
+    gulp.task('bar', done => {
+        console.log('bar task working');
+        done()
+    })
+```
+
+```js
+    // gulp 组合任务
+    // 创建 组合任务 (并行任务, 串行任务)
+    // 通过 gulp 提供的 series, parallel 两个 api 可以方便的实现 组合任务
+    // 组合任务
+    const {series, parallel} = require('gulp');
+    const task1 = done => {
+        setTimeout(() => {
+            console.log("task1 working");
+            done();
+        }, 1000);
+    }
+    const task2 = done => {
+        setTimeout(() => {
+            console.log("task2 working");
+            done()
+        }, 1000);
+    }
+    const task3 = done => {
+        setTimeout(() => {
+            console.log('task3 working');
+            done();
+        }, 1000);
+    }
+
+    exports.seriesTask = series(task1, task2, task3); // 按顺序 依次执行 串行
+    exports.parallelTask = parallel(task1, task2, task3); // 同步执行 并行
+```
+
+```js
+    // gulp 异步任务
+    // 异步任务的三种方式
+    // 1. 回调函数 方式
+    exports.callback = done => {
+        console.log('callback task');
+        done()
+    }
+    exports.callback_error = done => {
+        console.log('callback_error taks');
+        done(new Error('task failed'));
+    }
+    // 这里的回调函数和node中的回调函数是统一标准, 错误优先, 当我们想要在执行过成中抛出一个错误, 阻止后续任务继续执行, 给回调函数第一个参数指定为一个错误对象就可以了
+
+    // 2. Promise 方式
+    // 在任务执行函数中 return 一个 promise 对象
+    exports.promiseTask = () => {
+        console.log('promise task');
+        return Promise.resolve();
+    }
+    exports.promiseRejectTask = () => {
+        console.log('promise reject task');
+        return Promise.reject(new Error('task failed'));
+    }
+
+    // 3. Async / Await
+    // node 环境 8 以上 恩施 新标准
+    const fs = require('fs')
+    const timeout = time => {
+        return new Promise(resolve => {
+            setTimeout(resolve, time);
+        })
+    }
+    exports.async = async () => {
+        await timeout(1000),
+        console.log('async task');
+    }
+    
+    // 4. Steam
+    exports.stream = done => {
+        const readStream = fs.createReadStream('package.json');
+        const writeStream = fs.createWriteStream('temp.txt');
+        readStream.pipe(writeStream); // 文件复制
+
+        // return readStream;
+        // 约等于以下操作, gulp 只是注册了一个 end 事件
+        readStream.on('end', ()  => {
+            done();
+        })
+    }
+
+```
+
+```js
+    // 构建过程核心工作原理
+    // 读取文件 -> 转换 -> 写入目标位置
+    // 
 ```
 
 ### (3). FIS
