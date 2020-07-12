@@ -813,11 +813,519 @@
 ```js
     // 构建过程核心工作原理
     // 读取文件 -> 转换 -> 写入目标位置
-    // 
+    // 读取流 -> 转换流 -> 写入流
+    // gulp => The streaming build system 基于流的构建系统
+    const fs = require("fs")
+    const {Transform} = require("stream")
+    exports.default = () => {
+        // 文件读取流
+        const read = fs.createReadStream('test.css');
+        // 文件写入流
+        const write = fs.createWriteStream('test.min.css');
+        // 文件转换流
+        const transform = new Transform({
+            transform: (chunk, encoding, callback) => {
+                // 转换过程是实现
+                // chunk => 读取流中 读取到的内容 (buffer)
+                const input = chunk.toString();
+                const output = input.replace(/\s+/g, "").replace(/\/*.+>\*\//g, ""); // 剔除空格和注释
+                callback(null, output); // 错误优先函数, 第一个是错误, 没有可以不填
+            }
+        })
+
+        // 把读取出来的流导入写入流
+        read
+        .pipe(transform) // 先转成 转换流
+        .pipe(write); // 在转成 写入流
+
+        return read; // return 出去 gulp 可以根据流的状态 去判定 任务是否完成
+    }
+```
+
+```js
+    // gulp 文件操作 API | 插件的使用
+
+    // gulp 自带的 读取流 和 写入流 生成器
+    const {src, dest} = require('gulp')
+
+    // 文件转换通过插件的方式实现
+    // 例如 css 文件的压缩
+    const clearCss = require("gulp-clean-css");
+    const rename = require('gulp-rename');
+
+    exports.default = () => {
+        // return src('src/normalize.css').pipe(dest("dist"))
+        // 相比于原始api gulp模块提供的api 更加强大, 可以使用通配符
+        // return src('src/*.css').pipe(dest("dist"));
+        // 文件的转换通过插件的方式实现
+        return src("src/*.css")
+                .pipe(clearCss())
+                .pipe(rename({extname: '.min.css'}))
+                .pipe(dest('dist'))
+    }
+```
+
+```js
+    // gulp 自动化构建案例
+
+    // 1. 样式文件编译
+    //  (1) sass 文件  gulp-sass
+    const { src, dest } = require('gulp');
+    const sass = require('gulp-sass');
+    const style = () => {
+        return src('src/assets/styles/*.scss', { base: 'src' }) // 指定 base 之后 src 之后的路径会原样复制
+                .pipe(sass({ outputStyle: 'expanded'})) // expanded 代码完全展开 // sass 插件 默认不会转换 _作为文件名开头的文件
+                .pipe(dest('dist'));
+    }
+    module.exports={
+        style
+    }
+
+    // 2, 脚本文件编译
+    //  (1) gulp-babel yarn add gulp-babel @babel/core @babel/preset-env --dev
+    const { src, dest } = require('gulp');
+    const babel = require('gulp-babel')
+    const script = () => {
+        return src('src/assets/scripts/*.js', {base: 'src'})
+                .pipe(babel([ presets: ['@babel/preset-env']]))
+                .pipe(dest('dist'))
+    }
+    module.exports={
+        script
+    }
+
+    // 3. 页面模板编译
+    //  示例使用了 swig 页面模板引擎  所以解析使用对应的 gulp-swig
+    const swig = require('gulp-swig')
+    const data = {
+        menus: [
+            {
+            name: 'Home',
+            icon: 'aperture',
+            link: 'index.html'
+            },
+            {
+            name: 'Features',
+            link: 'features.html'
+            },
+            {
+            name: 'About',
+            link: 'about.html'
+            },
+            {
+            name: 'Contact',
+            link: '#',
+            children: [
+                {
+                name: 'Twitter',
+                link: 'https://twitter.com/w_zce'
+                },
+                {
+                name: 'About',
+                link: 'https://weibo.com/zceme'
+                },
+                {
+                name: 'divider'
+                },
+                {
+                name: 'About',
+                link: 'https://github.com/zce'
+                }
+            ]
+            }
+        ],
+        pkg: require('./package.json'),
+        date: new Date()
+    }
+    const page =() => {
+        return src('src/*.html', { base: 'src'})
+                .pipe(swig({ data })) // 引擎中变动的量 可以在此处指明, 从而生成的时候会一并将值生成
+                .pipe(dest('dist'))
+    }
+
+    // 4. 组合任务  将三大任务统一执行
+    const { src, dest, parallel} = require("gulp");
+    const compile = paraller(style, script, page);
+    module.exports={
+        compile
+    }
+
+    // 5. 字体文件 和 图片文件的编译处理
+    // gulp-imagemin --dev
+    const imageMin = require('gulp-imagemin')
+    const image = () => {
+        return src('src/assets/images/**',{base: 'src'})
+                .pipe(imagemin())
+                .pipe(dest('dist'))
+    }
+    const font = () => {
+        return src('src/assets/fonts/*', {base : "src"});
+                .pipe(imagemin())
+                .pipe(dest('dist'))
+    }
+    const compile = paraller(style, script, page, image, font)
+
+    // 6. 其他文件 及 文件清除
+
+    const extra = () => {
+        return src('public/**',{base: 'public'})
+                .pipe(dest('dist'))
+    }
+    const build = parallel (compile, extra);
+
+    module.exports={
+        compile,
+        build
+    }
+
+    yarn add del --dev // 安装删除插件
+
+    const del = require('del');
+
+    const clean = () => {
+        return del(['dist']);
+    }
+
+    const build = series(clean, paraller(compile,extra));
+
+    module.exports={
+        build,
+    }
+
+    // 7. 自动加载插件
+    // gulp-load-plugins
+    const loadPlugins = require('gulp-load-plugins')
+    const plugins = loadPlugins();
+    // 所有包都会成为 plugins 对象下的一个属性
+    // plugins.sass
+    // plugins.imagemin
+
+    // 8. 热更新开发服务器
+    // browser-sync 模块 yarn add browser-sync --dev
+    // 支持热更新
+
+    const browserSync = require('browser-sync'); // 模块引用
+    const bs = browserSync.create(); // 创建一个服务器
+
+    const server = () => {
+        bs.init({
+            notify: false, // 是否有提示, 默认 true
+            port: 2030, // 端口号, 默认3000
+            open: false, // 是否自动打开浏览器, 默认 true
+            files: 'dist/**', // browserSync 启动后 监听的路径 通配符
+            serve r: {
+                baseDir: 'dist',
+                routes: {
+                    '/node_modules' : 'node_modules'
+                }, // 路径 优先度 高于 baseDir, 用于配置一些特殊路径文件, 先查routes -> 再查 baseDir
+            } // 网站根目录
+        })
+    }
+
+    module.exports={
+        compile,
+        build
+        server,
+    }
+
+    // 9. 监听 src 文件夹变化
+    const {src, dest, series, parallel, watch} = require('gulp'); // watch 自动监听一个文件路径的通配符, 根据这些文件的变化, 决定是否要重新执行某一任务
+    const server = () => {
+        watch('src/assets/styles/*.scss', style);
+        watch('src/assets/scripts/*.js', script);
+        watch('src/assets/images/**', image);
+        watch('src/assets/fonts/**', font);
+        watch('src/*.html*', page);
+        watch('public/**', extra);
+        bs.init({
+            notify: false, // 是否有提示, 默认 true
+            port: 2030, // 端口号, 默认3000
+            open: false, // 是否自动打开浏览器, 默认 true
+            files: 'dist/**', // browserSync 启动后 监听的路径 通配符
+            serve r: {
+                baseDir: 'dist',
+                routes: {
+                    '/node_modules' : 'node_modules'
+                }, // 路径 优先度 高于 baseDir, 用于配置一些特殊路径文件, 先查routes -> 再查 baseDir
+            } // 网站根目录
+        })
+    }
+    // 页面的自动刷新 也可能因为swig 模板引擎的缓存机制导致页面不刷新, 此时需要额外奖swig选项中的cache设置为false
+    const page = () => {
+        return src('src/*.html', { base: 'src' })
+                .pipe(plugins.swig({ data, defaults: { cache: false } })) // 防止模板缓存导致页面不能及时更新
+                .pipe(dest('temp'))
+                .pipe(bs.reload({ stream: true }))
+    }
+
+    // 10. 构建优化
+    // image font 等 文件 只做了压缩处理, 不需要再构建时自动监听构建, 可以在bs 中再指定一个目录用于监听 src 中的 image 和 font 目录, 不参与 开发过程构建, 只在发布上线时 构建
+    const server = () => {
+        watch('src/assets/styles/*.scss', style);
+        watch('src/assets/scripts/*.js', script);
+        watch('src/*.html*', page);
+        // watch('src/assets/images/**', image);
+        // watch('src/assets/fonts/**', font);
+        // watch('public/**', extra);
+        watch([
+            'src/assets/images/**',
+            'src/assets/fonts/**',
+            'public/**'
+        ], bs.reload); // 不再监听图片,字体和公共文件的变化而去构建, 可以监听 src 中的资源变化, 再请求bs 重新请求资源, 从而获取到最新文件资源
+        bs.init({ 
+            notify: false, // 是否有提示, 默认 true
+            port: 2030, // 端口号, 默认3000
+            open: false, // 是否自动打开浏览器, 默认 true
+            files: 'dist/**', // browserSync 启动后 监听的路径 通配符
+            serve r: {
+                baseDir: ['dist', 'src', 'public' ], // 当一个请求出现后, 会从头开始往后匹配, 一直匹配到为止, css/js/html 会在 dist 中匹配到, image/font 会到src 中匹配到, 因为没有构建到 dist 中, 减少一个构建, 提高一部分构建效率
+                routes: {
+                    '/node_modules' : 'node_modules'
+                }, // 路径 优先度 高于 baseDir, 用于配置一些特殊路径文件, 先查routes -> 再查 baseDir
+            } // 网站根目录
+        })
+    }
+
+    const compile = parallel(style, script, page); // 删除了image和font 任务, 不在开发是构建 image和 font 文件
+
+    const build = series(clean, parallel(compile, image, font, extra)); // 完整构建, 准备上线
+
+    const develop = series(compile, serve); // 开发模式 构建 + 开启测试服务器
+
+    module.exports={
+        compile, // 构建
+        build, // 上线模式
+        develop, // 开发模式
+    }
+
+
+    // 11. useref插件 -> 依赖文件引用处理
+    // yarn add grup-useref --dev
+    const useref = () => {
+        return src('dist/*.html', { base: 'dist'})
+                .pipe(plugins.useref({'searchPath' : ['dist', '.' ]}))
+                .pipe(dest('dist'))
+    }
+    module.exports = {
+        compile, // 构建
+        build, // 上线模式
+        develop, // 开发模式
+        useref, // 处理文件引用 不能正常引用的问题
+    }
+
+    // 12. 分别压缩 依赖文件的 html/css/js
+    const useref = () => {
+        return src('dist/*.html', { base: 'dist'})
+                .pipe(plugins.useref({'searchPath' : ['dist', '.' ]}))
+                // html js css
+                // gulp-htmlmin / gulp-uglify / gulp-clean-css
+                // 需要判断, 安装 gulp-if 插件
+                .pipe(plugins.if(/\.js$/,plugins.uglify())) // 判断是否是已 .js结尾 执行js压缩
+                .pipe(plugins.if(/\.css$/,plugins.cleanCss())) // 判断是否是已 .css结尾, 执行css压缩
+                .pipe(plugins.if(/\.html$/,plugins.htmlmin({
+                    collapseWhitespace: true, // 折叠空白字符
+                    minifyCSS: true, // 压缩css代码
+                    minifyJS: true, // 压缩JS代码
+                    // 移除注释
+                    // 移除空白文档
+                    // 去文档中自己找方法吧
+                }))) // 判断是否是已 .html结尾, 执行html压缩 // 默认只执行空格的删除, 如果想删除换行符之类的, 需要另外指定collapseWhitespace: true
+                // .pipe(dest('dist')) // 如果还是写入 dist 因为是从dist读取流中再写入dist写入流, 会造成读写冲突, 所以先写入另外一个文件夹
+                .pipe(dest('release'))
+    }
+    module.exports = {
+        compile, // 构建
+        build, // 上线模式
+        develop, // 开发模式
+        useref, // 处理文件引用 不能正常引用的问题
+    }
+
+    // 13. 重新规划构建结构
+    // useref 打破了 之前的文件结构, 需要重新规划, 创建一个临时文件夹来接受第一次转换的文件
+    const clean = () => {
+        return del(['dist', 'temp']);
+    }
+    const style = () => {
+        return src('src/assets/styles/*.scss', {base : 'src'})
+                .pipe(plugins.sass({
+                    outputStyle: 'expended'
+                }))
+                .pipe(dest('temp'))
+                .pipe(bs.reload({ 
+                    stream: true
+                })) // bs 载入 stream 流的方式执行
+    }
+    const script = () => {
+        return src('src/assets/script/*.js', {base : 'src'})
+                .pipe(plugins.babel({
+                    presets: ['@babel/preset-env']
+                }))
+                .pipe(dest('temp'))
+                .pipe(bs.reload({
+                    stream: true
+                }))
+    }
+    const page = () => {
+        return src('src/*.html', {base: 'src'})
+                .pipe(plugins.swig({
+                    data
+                }))
+                .pipe(dest('temp'))
+                .pipe(bs.reload({
+                    stream: true
+                }))
+    }
+    const image = () => {
+        // 不改, 开发构建不受useref 影响, 所以不需要移动到临时文件夹 temp
+    }
+
+    const font = () => {
+        // 不改, 开发构建不受useref 影响, 所以不需要移动到临时文件夹 temp
+    }
+    const extra = () => {
+        // 不改, 开发构建不受useref 影响, 所以不需要移动到临时文件夹 temp
+    }
+    const useref = () => {
+        return src('temp/*.html', {base : 'temp'})
+                .pipe(plugins.useref({
+                    searchPath: ['temp', '.']
+                }))
+                .pipe(plugins.if(/\.js$/, plugins.uglify()))
+                .pipe(plugins.if(/\.css$/, plugins.cleanCss()))
+                .pipe(plugins.if(/\.html$/, plugins.htmlmin({
+                    collapseWhitespace: true,
+                    minifyCSS: true,
+                    minifyJS: true
+                })))
+                .pipe(dest('dist'))
+    }
+    const server = () => {
+        watch('src/assets/styles/*.scss', style);
+        watch('src/assets/scripts/*.js', script);
+        watch('src/*.html*', page);
+        // watch('src/assets/images/**', image);
+        // watch('src/assets/fonts/**', font);
+        // watch('public/**', extra);
+        watch([
+            'src/assets/images/**',
+            'src/assets/fonts/**',
+            'public/**'
+        ], bs.reload); // 不再监听图片,字体和公共文件的变化而去构建, 可以监听 src 中的资源变化, 再请求bs 重新请求资源, 从而获取到最新文件资源
+        bs.init({ 
+            notify: false, // 是否有提示, 默认 true
+            port: 2030, // 端口号, 默认3000
+            open: false, // 是否自动打开浏览器, 默认 true
+            files: 'dist/**', // browserSync 启动后 监听的路径 通配符
+            serve r: {
+                baseDir: ['temp', 'src', 'public' ], // 当一个请求出现后, 会从头开始往后匹配, 一直匹配到为止, css/js/html 会在 dist 中匹配到, image/font 会到src 中匹配到, 因为没有构建到 dist 中, 减少一个构建, 提高一部分构建效率
+                routes: {
+                    '/node_modules' : 'node_modules'
+                }, // 路径 优先度 高于 baseDir, 用于配置一些特殊路径文件, 先查routes -> 再查 baseDir
+            } // 网站根目录
+        })
+    }
+    const compile = parallel(style, script, page);
+    const build = series(
+        clean, 
+        parallel(
+            series(compile, useref),
+            image,
+            font, 
+            extra
+        )
+    )
+    const develop = series(compile, server)
+    module.exports={
+
+    }
+
+    // 14. gulp 补充
+
+    // leader 设计 构建流程
+    // 回答 需要什么构建流程
+    // 回答 需要构建流程怎么样的执行顺序
+    // 回答 暴露什么 构建方法 --> clean build develop
+    // 还可以把这三个任务 提升到 package.json 中
+    // scripts: {
+    //     "clean" : "gulp clean",
+    //     "build" : "gulp build",
+    //     "develop" : "gulp develop",
+    // }
+    // 后续可以直接 通过 yarn clean 来调用 yarn gulp clean 任务
+
+    // gitignore 文件中 添加对生成文件的忽略 例如 dist 和 temp 文件夹
 ```
 
 ### (3). FIS
 
+```js
+    // 基本使用 
+    // 高度集成
+    // yarn global add fis3
+    // fis3 release 或者 fis3 release -d output
+    // fis-cong.js
+    // fis.match(*.{js,scss,png})
+```
+
+
+### (4). 封装 自动化构建工作流 (基于 gulp)
+
+```js
+    // gulpfile + gulp = 构建工作流
+    // gulpfile + gulp-cli = 
+```
+
+```js
+    // 提取gulpfile
+    // 写好的工作流 yarn link
+    // 需要用到工作流的地方 yarn link (工作流名称)
+    // 会将工作流导入到项目中.
+    // 运行gulp 开放出来的方法
+```
+
+```js
+    // 解决模块中的问题
+    // 工作流读取项目中的数据, 约定大于配置的办法, 在项目中约定一个配置文件, 由工作流读取配置文件, 获取项目中的数据
+    const cwd = process.cwd(); // 返回当前命令行所在的工作目录 -> 项目所在目录
+    let config = {
+        // default config
+    }; 
+    try {
+        const loadConfig = require(`${cwd}/pages.config.js`);
+        config = Object.assign({}, config, loadConfig); // 合并default  和 读取到的config
+    } catch(e) {
+
+    }
+
+    // babel 读取不到 可以在工作流中用到的地方换成 require  让其向上查找
+```
+
+```js
+    // 抽象路径配置
+    // 在config 中 默认 src/ dist/ temp/ 等目录
+    // 在项目中可以在 pages.config.js 等 文件中 覆盖工作流的路径, 灵活配置.
+```
+
+```js
+    // 包装 gulp cli
+
+    // 工作流中创建 bin/zce-pages.js 文件 作为 cli 入口
+    // 在 package.json 中 创建 "bin": "bin/zce-pages.js"
+    // cli 入口 #!usr/bin/env node
+    // 修改权限 chmod 755 zce-pages.js
+    // yarn link
+
+```
+
+```js
+    // 发布并使用模块
+
+```
+
+```js
+    // 梳理
+    // github.com/zce/x-pages
+```
 
 ## 3.模块化打包
 
