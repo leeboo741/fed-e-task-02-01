@@ -1262,9 +1262,20 @@
     // 基本使用 
     // 高度集成
     // yarn global add fis3
-    // fis3 release 或者 fis3 release -d output
-    // fis-cong.js
-    // fis.match(*.{js,scss,png})
+    // fis3 release 或者 fis3 release -d output // 默认构建任务 -> 生成到.temp 文件下, 默认隐藏, 加 -d => 生成至指定文件夹目录下, 默认只会将代码中对资源的引用从相对路径自动转换成绝对路径, 从而实现资源的定位, 实现将开发路径和部署路径之间的关系彻底的分离开
+    // fis-cong.js -> 特有全局对象 fis
+    // fis.match(*.{js,scss,png}, {
+    //     release: '/assets/$0'; // $0 => 当前文件目录的原始结构
+    // })
+    // fis.match('**/*.scss', {
+    //     rExt: '.css', // 重命名
+    //     parser: fis.plugins('node-sass'), // 解析
+    //     optimizer: fis.plugin('clean-css') // 压缩
+    // })
+    // fis.match('**/*.js', {
+    //     parser: fis.plugin('babel-6.x'), // 解析
+    //     optimizer: fis.plugin('uglify-js') // 压缩
+    // })
 ```
 
 
