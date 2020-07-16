@@ -1,0 +1,9 @@
+{
+  "name": "<%= projectName%>",
+  "version": "<%= versionCode%>",
+  "main": "<%= mainFile%>",
+  "license": "<%= license%>",
+  "dependencies": {
+    "yeoman-generator": "^4.11.0"
+  }
+}
